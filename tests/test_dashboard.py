@@ -28,9 +28,7 @@ def test_dashboard_recipes_runs_without_errors(app_path):
     """
     Test that each Streamlit dashboard recipe runs without throwing any UI exceptions against a live CUBRID database instance.
     """
-    if CUBRID_TEST_URL:
-        os.environ["CUBRID_URL"] = CUBRID_TEST_URL
-        os.environ["DATABASE_URL"] = CUBRID_TEST_URL
+
     at = AppTest.from_file(app_path)
     at.run()
 
