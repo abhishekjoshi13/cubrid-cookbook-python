@@ -58,7 +58,8 @@ The cookbook ships **62 recipes**. Verification is split:
   quickstart, and the golden-backed templates).
 - The **Flask, FastAPI, Streamlit, and Django** recipes are covered by pytest
   suites that are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
-  not in CI.
+  not in CI. The FastAPI suites run against live CUBRID when `CUBRID_TEST_URL` is
+  set and fall back to in-memory SQLite otherwise.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
 - The **Flask** pytest suites run against live CUBRID when `CUBRID_TEST_URL` is set
@@ -70,7 +71,7 @@ The cookbook ships **62 recipes**. Verification is split:
 | SQLAlchemy fundamentals | 7 | `make verify` (CI, 11.2) |
 | Pandas fundamentals | 6 | `make verify` (CI, 11.2) |
 | Flask templates | 11 | pytest (manual) |
-| FastAPI templates | 12 | pytest (manual) |
+| FastAPI templates | 12 | pytest (manual; live CUBRID via `CUBRID_TEST_URL`) |
 | Streamlit templates | 5 | manual run |
 | Django template | 1 | manual run |
 | Celery async-worker template | 1 | manual run |
@@ -86,6 +87,7 @@ The cookbook ships **62 recipes**. Verification is split:
 | Reserved word errors | ⚠️ Cryptic error | ⚠️ Cryptic error | Use double-quotes or rename |
 | No RETURNING clause | ❌ | ❌ | Use LAST_INSERT_ID() |
 | DDL auto-commits | By design | By design | Separate DDL from DML |
+| Duplicate index on indexed columns | ❌ | ❌ | Drop `index=True` on primary key / unique columns |
 
 See [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for details and workarounds.
 
@@ -111,6 +113,11 @@ sleep 60  # wait for DB initialization
 pip install flask flask-sqlalchemy pycubrid sqlalchemy-cubrid httpx pytest
 export CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb"
 ( cd templates/flask && for d in */tests; do python3 -m pytest "$d" -q; done )
+
+# FastAPI recipe tests use live CUBRID when CUBRID_TEST_URL is set and fall back
+# to in-memory SQLite when it is not
+pip install fastapi sqlalchemy pycubrid sqlalchemy-cubrid "email-validator>=2" httpx pytest pytest-asyncio
+export CUBRID_TEST_URL="cubrid+pycubrid://dba@localhost:33000/testdb"
 ( cd templates/api-service-fastapi/recipes && for d in */tests; do python3 -m pytest "$d" -q; done )
 
 # Run fundamentals
@@ -118,3 +125,9 @@ for f in fundamentals/pycubrid/*.py; do python3 "$f"; done
 for f in fundamentals/sqlalchemy/*.py; do python3 "$f"; done
 for f in fundamentals/pandas/*.py; do python3 "$f"; done
 ```
+
+The pytest suites create and drop their tables in whichever database
+`CUBRID_TEST_URL` points at, and a few table names are shared between suites
+(`inventory_items` in FastAPI recipe 09 and Flask recipe 11, `cookbook_products`
+in Flask recipes 01 and 07). Run the suites one after another against a shared
+instance, as the loops above do, or give concurrent runs separate databases.
