@@ -4,16 +4,17 @@ Tested combinations of CUBRID server, Python version, and driver/framework.
 
 > **What "tested" means here**: CI runs `make verify` on **CUBRID 11.2 and 11.4 / Python
 > 3.12** (job matrix), comparing stdout against the **46 recipes that ship goldens**
-> (`expected/*.expected`). The Flask, FastAPI, Streamlit, and Django recipes are
-> covered by pytest suites that are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
-> not in CI.
+> (`expected/*.expected`). On pushes to `main`, the nightly schedule and manual
+> runs, the same job also runs the **Flask and FastAPI pytest suites** against its
+> live CUBRID container on both versions. The Streamlit and Django recipes are
+> **run manually** (see [How to Test](#how-to-test-against-a-specific-version)), not in CI.
 
 ## CUBRID Server Versions
 
 | CUBRID | Status | Notes |
 |--------|--------|-------|
 | **11.2** | ✅ CI-verified | Primary CI target — 46 example outputs checked by `make verify` |
-| **11.4** | ✅ CI-verified | Same CAS protocol as 11.2; runs in the smoke-test job matrix (`make verify` goldens) |
+| **11.4** | ✅ CI-verified | Same CAS protocol as 11.2; runs in the smoke-test job matrix (`make verify` goldens, plus the Flask/FastAPI pytest suites on non-PR runs) |
 | 11.0 | ⚠️ Untested | Should work (same CAS protocol) |
 | 10.2 | ⚠️ Untested | Should work (same CAS protocol) |
 > **Scope note**: CI exercises CUBRID **11.2 and 11.4** (smoke-test job matrix) with
@@ -56,28 +57,29 @@ The cookbook ships **62 recipes**. Verification is split:
 - **45 recipes** carry stdout goldens (`expected/*.expected`) and are checked by
   `make verify` in CI on **CUBRID 11.2 / Python 3.12** (fundamentals, migration,
   quickstart, and the golden-backed templates).
-- The **Flask, FastAPI, Streamlit, and Django** recipes are covered by pytest
-  suites that are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
-  not in CI. The FastAPI suites run against live CUBRID when `CUBRID_TEST_URL` is
-  set and fall back to in-memory SQLite otherwise.
+- The **Flask and FastAPI** recipes are covered by pytest suites that the smoke
+  job runs against its live CUBRID container on **11.2 and 11.4** for every push
+  to `main`, nightly, and on manual runs (pull requests skip them to stay fast).
+  Each suite's `conftest.py` reads `CUBRID_TEST_URL`; without it the suites fall
+  back to SQLite for local runs.
+- The **Streamlit and Django** recipes are **run manually** (see [How to Test](#how-to-test-against-a-specific-version)),
+  not in CI.
 - **CUBRID 11.4** runs in the same CI smoke matrix as 11.2 (its `make verify` goldens
   are checked on both versions).
-- The **Flask** pytest suites run against live CUBRID when `CUBRID_TEST_URL` is set
-  and fall back to temporary SQLite databases otherwise.
 
 | Category | Recipes | Verified by |
 |----------|---------|-------------|
 | pycubrid fundamentals | 16 | `make verify` (CI, 11.2) |
 | SQLAlchemy fundamentals | 7 | `make verify` (CI, 11.2) |
 | Pandas fundamentals | 6 | `make verify` (CI, 11.2) |
-| Flask templates | 11 | pytest (manual) |
-| FastAPI templates | 12 | pytest (manual; live CUBRID via `CUBRID_TEST_URL`) |
+| Flask templates | 11 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
+| FastAPI templates | 12 | pytest (CI on `main` + nightly, 11.2 + 11.4) |
 | Streamlit templates | 5 | manual run |
 | Django template | 1 | manual run |
 | Celery async-worker template | 1 | manual run |
 | Pandas batch-etl template | 5 | manual run (goldens in `expected/`) |
 | Async + Alembic + JSON + Isolation | 4 | `make verify` (CI, 11.2) |
-| **Total** | **68** | 45 CI-verified on 11.2; rest run manually |
+| **Total** | **68** | 45 CI-verified on 11.2 via goldens; Flask and FastAPI pytest suites in CI on `main` + nightly; rest run manually |
 
 ## Known Limitations by Version
 
